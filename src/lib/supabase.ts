@@ -4,27 +4,27 @@ import type { Branch, StockRow, SalesRow, CupRow, RestockRow, Meta, CupSize, Ite
 import { BRANCHES } from "./types";
 import { variance, restockNeed, isSpecialActive } from "./calc";
 
-let _client: SupabaseClient | null = null;
+// สร้าง client สดทุกครั้ง (แบบเดียวกับ /api/debug ที่พิสูจน์แล้วว่าอ่านได้ครบ) — เลี่ยง singleton ที่อาจถูก init ตอน env ยังไม่พร้อม
 function sb(): SupabaseClient {
-  if (_client) return _client;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error("Supabase env missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)");
-  _client = createClient(url, key, { auth: { persistSession: false } });
-  return _client;
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 const sizes: CupSize[] = ["P", "S", "BOWL", "14OZ"];
 
 export const supabaseStore = {
   async getMeta(): Promise<Meta> {
-    const itemsRes = await sb().from("items").select("*").order("sort");
+    const itemsRes = await sb()
+      .from("items")
+      .select("id,name,category,unit,is_special,is_cup,cup_size,has_remainder,sort");
     if (itemsRes.error) throw new Error("query items: " + itemsRes.error.message);
-    const parsRes = await sb().from("par_levels").select("*");
+    const parsRes = await sb().from("par_levels").select("item_id,branch_id,level");
     if (parsRes.error) throw new Error("query par_levels: " + parsRes.error.message);
-    const items = itemsRes.data;
+    const items = (itemsRes.data ?? []).slice().sort((a: any, b: any) => (a.sort ?? 0) - (b.sort ?? 0));
     const pars = parsRes.data;
-    const mapped: Item[] = (items ?? []).map((r: any) => ({
+    const mapped: Item[] = items.map((r: any) => ({
       id: r.id, name: r.name, category: r.category, unit: r.unit,
       isSpecial: r.is_special, isCup: r.is_cup, cupSize: r.cup_size ?? undefined,
       hasRemainder: r.has_remainder, sort: r.sort,
