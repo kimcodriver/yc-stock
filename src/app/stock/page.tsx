@@ -23,8 +23,12 @@ const blankZero = (v: number): number | string => (v === 0 ? "" : v);
 const varianceOf = (r: StockRow): number =>
   variance(r.carryPack, r.inPack, r.used, r.returned, r.remainPack);
 
+// ขาย/ใช้ (เศษ g) = ยกมา g + รับเข้า g − คงเหลือ g  (ค่าคำนวณจากคงเหลือ, ไม่เก็บแยก)
+const usedGof = (r: StockRow): number =>
+  Math.max(r.carryG + r.inG - r.remainG, 0);
+
 const isFilled = (r: StockRow): boolean =>
-  r.inPack > 0 || r.used > 0 || r.inG > 0;
+  r.inPack > 0 || r.used > 0 || r.inG > 0 || usedGof(r) > 0;
 
 export default function StockPage() {
   const [branch, setBranch] = React.useState<Branch>("NVP");
@@ -87,18 +91,38 @@ export default function StockPage() {
   const filledCount = shownRows.filter(isFilled).length;
   const varianceCount = shownRows.filter((r) => varianceOf(r) !== 0).length;
 
-  type NumField = "inPack" | "used" | "remainPack" | "inG" | "remainG";
+  type NumField = "inPack" | "used" | "remainPack" | "inG" | "usedG" | "remainG";
   function setField(itemId: string, field: NumField, raw: string) {
     setRows((prev) => {
       const cur = prev[itemId];
       if (!cur) return prev;
       const val = toNum(raw);
-      const next: StockRow = { ...cur, [field]: val };
-      if (field === "inPack" || field === "used") {
-        next.remainPack = remainPieces(next.carryPack, next.inPack, next.used);
-      }
-      if (field === "inG" || field === "used") {
-        next.remainG = remainGrams(next.carryG, next.inG, next.used);
+      const next: StockRow = { ...cur };
+      switch (field) {
+        case "inPack": // รับเข้า (แพ็ค) → คงเหลือ ปรับตาม (คงค่า ขาย/ใช้)
+          next.inPack = val;
+          next.remainPack = remainPieces(next.carryPack, val, next.used);
+          break;
+        case "used": // ขาย/ใช้ (แพ็ค) → คำนวณคงเหลือ
+          next.used = val;
+          next.remainPack = remainPieces(next.carryPack, next.inPack, val);
+          break;
+        case "remainPack": // คงเหลือ (แพ็ค) → คำนวณ ขาย/ใช้ ย้อนกลับ
+          next.remainPack = val;
+          next.used = Math.max(next.carryPack + next.inPack - val, 0);
+          break;
+        case "inG": { // รับเข้า g → คงเหลือ g ปรับตาม (คงค่า ขาย/ใช้ g)
+          const keepUsedG = usedGof(cur);
+          next.inG = val;
+          next.remainG = remainGrams(next.carryG, val, keepUsedG);
+          break;
+        }
+        case "usedG": // ขาย/ใช้ (เศษ g) → คำนวณคงเหลือ g
+          next.remainG = remainGrams(next.carryG, next.inG, val);
+          break;
+        case "remainG": // คงเหลือ (เศษ g) → ขาย/ใช้ g เป็นค่าคำนวณย้อนกลับ
+          next.remainG = val;
+          break;
       }
       next.variance = varianceOf(next);
       return { ...prev, [itemId]: next };
@@ -215,14 +239,24 @@ export default function StockPage() {
                     {it.hasRemainder && (
                       <>
                         <div className="mb-1 mt-2 text-[11px] font-medium text-brand-ink/50">เศษ (g)</div>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                           <NumberField label="ยกมา g" value={row.carryG} readOnly tone="ro" />
                           <NumberField
                             label="รับเข้า g"
                             value={blankZero(row.inG)}
                             onChange={(x) => setField(it.id, "inG", x)}
                           />
-                          <NumberField label="คงเหลือ g" value={row.remainG} tone="auto" readOnly />
+                          <NumberField
+                            label="ขาย/ใช้ g"
+                            value={blankZero(usedGof(row))}
+                            onChange={(x) => setField(it.id, "usedG", x)}
+                          />
+                          <NumberField
+                            label="คงเหลือ g"
+                            value={row.remainG}
+                            onChange={(x) => setField(it.id, "remainG", x)}
+                            tone="auto"
+                          />
                         </div>
                       </>
                     )}
