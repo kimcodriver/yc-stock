@@ -18,10 +18,12 @@ const sizes: CupSize[] = ["P", "S", "BOWL", "14OZ"];
 
 export const supabaseStore = {
   async getMeta(): Promise<Meta> {
-    const [{ data: items }, { data: pars }] = await Promise.all([
-      sb().from("items").select("*").order("sort"),
-      sb().from("par_levels").select("*"),
-    ]);
+    const itemsRes = await sb().from("items").select("*").order("sort");
+    if (itemsRes.error) throw new Error("query items: " + itemsRes.error.message);
+    const parsRes = await sb().from("par_levels").select("*");
+    if (parsRes.error) throw new Error("query par_levels: " + parsRes.error.message);
+    const items = itemsRes.data;
+    const pars = parsRes.data;
     const mapped: Item[] = (items ?? []).map((r: any) => ({
       id: r.id, name: r.name, category: r.category, unit: r.unit,
       isSpecial: r.is_special, isCup: r.is_cup, cupSize: r.cup_size ?? undefined,

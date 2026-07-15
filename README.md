@@ -13,10 +13,12 @@ npm run dev        # http://localhost:3000  — ใช้ in-memory seeded store
 > ไม่ตั้ง env → ระบบใช้ **memory store** (seeded, พร้อม demo/test ทันที)
 
 ## Deploy จริง (Vercel + Supabase)
-1. สร้าง Supabase project → SQL editor รัน:
-   - `supabase/migrations/0001_init.sql`
-   - `supabase/seed.sql` (branches)
-   - สร้าง items/par: `node --experimental-strip-types scripts/gen-seed.mjs > supabase/seed-items.sql` แล้วรัน `seed-items.sql`
+1. สร้าง Supabase project → SQL editor รัน **ตามลำดับนี้** (สำคัญ — ผิดลำดับ FK จะ error):
+   1. `supabase/migrations/0001_init.sql` — สร้างตาราง
+   2. `supabase/seed.sql` — branches (SND, NVP)
+   3. `supabase/seed-items.sql` — **items (112) + par_levels (224)** ← ต้องมาก่อน stock
+   4. `supabase/seed-stock.sql` — สต็อกตั้งต้น (คงเหลือล่าสุด 2026-07-13 · 221 แถว · ฐาน carry-forward)
+   > seed-items.sql เป็นไฟล์สำเร็จรูปแล้ว (regenerate ได้ด้วย `node --experimental-strip-types scripts/gen-seed.mjs > supabase/seed-items.sql`)
 2. Vercel → import repo → ตั้ง Environment Variables:
    - `USE_SUPABASE=1`
    - `SUPABASE_URL=...`

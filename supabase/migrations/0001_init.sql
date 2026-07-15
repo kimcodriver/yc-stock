@@ -67,3 +67,11 @@ create table if not exists cup_reconcile (
   sold_qty   numeric not null default 0,
   unique (date, branch_id, size)
 );
+
+-- ปิด RLS: แอปเข้าถึงผ่าน BFF (server) ด้วย service role เท่านั้น client ไม่แตะ DB ตรง
+alter table branches      disable row level security;
+alter table items         disable row level security;
+alter table par_levels    disable row level security;
+alter table stock_daily   disable row level security;
+alter table sales_daily   disable row level security;
+alter table cup_reconcile disable row level security;
