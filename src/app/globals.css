@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+body {
+  min-height: 100dvh;
+  color: #2A2A2E;
+  font-family: 'Kanit', system-ui, sans-serif;
+  background:
+    radial-gradient(60vw 60vw at 12% -8%, rgba(132,215,255,.28), transparent 60%),
+    radial-gradient(55vw 55vw at 108% 4%, rgba(255,140,51,.22), transparent 58%),
+    radial-gradient(60vw 60vw at 50% 118%, rgba(242,86,92,.20), transparent 60%),
+    #FBF7F0;
+  background-attachment: fixed;
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/60 backdrop-blur-xl border border-white/70 rounded-2xl shadow-glass;
+  }
+  .glass-soft {
+    @apply bg-white/45 backdrop-blur-md border border-white/60 rounded-xl;
+  }
+  .field {
+    @apply w-full rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-center
+           outline-none focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/30;
+  }
+}
+
+/* ซ่อน spinner ของ number input บนมือถือให้สะอาด */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }

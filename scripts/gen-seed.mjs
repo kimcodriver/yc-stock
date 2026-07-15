@@ -1,0 +1,24 @@
+// สร้าง SQL seed ของ items + par_levels จาก single source of truth (src/lib/seed-data.ts)
+// รัน: node --experimental-strip-types scripts/gen-seed.mjs > supabase/seed-items.sql
+// (seed-data.ts มี import แบบ type-only เท่านั้น จึงถูก strip ได้)
+import { ITEMS, PAR } from "../src/lib/seed-data.ts";
+
+const esc = (s) => String(s).replace(/'/g, "''");
+const bool = (b) => (b ? "true" : "false");
+const nn = (v) => (v == null ? "null" : v);
+
+let out = "-- generated from src/lib/seed-data.ts\n";
+out += "insert into items (id,name,category,unit,is_special,is_cup,cup_size,has_remainder,sort) values\n";
+out += ITEMS.map((it) =>
+  `('${it.id}','${esc(it.name)}','${esc(it.category)}','${esc(it.unit)}',${bool(it.isSpecial)},${bool(it.isCup)},${it.cupSize ? `'${it.cupSize}'` : "null"},${bool(it.hasRemainder)},${it.sort})`
+).join(",\n") + "\non conflict (id) do nothing;\n\n";
+
+out += "insert into par_levels (item_id,branch_id,level) values\n";
+const rows = [];
+for (const it of ITEMS) {
+  rows.push(`('${it.id}','SND',${nn(PAR[it.id].SND)})`);
+  rows.push(`('${it.id}','NVP',${nn(PAR[it.id].NVP)})`);
+}
+out += rows.join(",\n") + "\non conflict (item_id,branch_id) do update set level = excluded.level;\n";
+
+process.stdout.write(out);
