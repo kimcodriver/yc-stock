@@ -75,6 +75,12 @@ export const memoryStore = {
     return { branches: BRANCHES, items: ITEMS, par: PAR };
   },
 
+  setItemConfig(itemId: string, cfg: { hasRemainder: boolean; gramsPerUOM: number }) {
+    const it = ITEMS.find((x) => x.id === itemId);
+    if (it) { it.hasRemainder = cfg.hasRemainder; it.gramsPerUOM = cfg.gramsPerUOM; }
+    return { ok: true };
+  },
+
   getStock(branch: Branch, date: string): StockRow[] {
     seed();
     return ITEMS.map((it) => {

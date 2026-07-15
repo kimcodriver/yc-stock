@@ -150,21 +150,34 @@ const SPECIAL_PREFIX = [
 const CUP_MAP: Record<string, CupSize> = {
   "Cup P (5oz)": "P", "Cup S (9oz)": "S", "Small Bowl": "BOWL", "Cup (14oz)": "14OZ",
 };
-const REMAINDER_CATS = new Set(["Yogurt 1kg/Box", "Yogurt 500g/Box"]);
+// default: ขายแบบแกะ (นับเศษ g) เฉพาะ Yogurt 1kg/Box · ที่เหลือขายเต็มแพ็ค (ตั้งเพิ่มได้หน้า Settings)
+const REMAINDER_CATS = new Set(["Yogurt 1kg/Box"]);
+
+// กรัมต่อ 1 แพ็ค — แปลงจากหน่วยบรรจุ "1kg/Box"→1000, "500g/Box"→500 (default; แก้ได้หน้า Settings)
+function gramsPerUOM(unit: string): number {
+  const m = unit.match(/(\d+(?:\.\d+)?)\s*(kg|g)\b/i);
+  if (!m) return 0;
+  const v = parseFloat(m[1]);
+  return /kg/i.test(m[2]) ? v * 1000 : v;
+}
 
 const slug = (i: number) => "it-" + String(i + 1).padStart(3, "0");
 
-export const ITEMS: Item[] = RAW.map(([name, category, unit], i) => ({
-  id: slug(i),
-  name,
-  category,
-  unit,
-  isSpecial: SPECIAL_PREFIX.some((p) => name.startsWith(p)),
-  isCup: name in CUP_MAP,
-  cupSize: CUP_MAP[name],
-  hasRemainder: REMAINDER_CATS.has(category),
-  sort: i,
-}));
+export const ITEMS: Item[] = RAW.map(([name, category, unit], i) => {
+  const hasRemainder = REMAINDER_CATS.has(category);
+  return {
+    id: slug(i),
+    name,
+    category,
+    unit,
+    isSpecial: SPECIAL_PREFIX.some((p) => name.startsWith(p)),
+    isCup: name in CUP_MAP,
+    cupSize: CUP_MAP[name],
+    hasRemainder,
+    gramsPerUOM: hasRemainder ? gramsPerUOM(unit) : 0,
+    sort: i,
+  };
+});
 
 export const PAR: ParMap = Object.fromEntries(
   RAW.map(([, , , snd, nvp], i) => [slug(i), { SND: snd, NVP: nvp }])

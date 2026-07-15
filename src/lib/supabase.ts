@@ -18,7 +18,7 @@ export const supabaseStore = {
   async getMeta(): Promise<Meta> {
     const itemsRes = await sb()
       .from("items")
-      .select("id,name,category,unit,is_special,is_cup,cup_size,has_remainder,sort");
+      .select("id,name,category,unit,is_special,is_cup,cup_size,has_remainder,grams_per_uom,sort");
     if (itemsRes.error) throw new Error("query items: " + itemsRes.error.message);
     const parsRes = await sb().from("par_levels").select("item_id,branch_id,level");
     if (parsRes.error) throw new Error("query par_levels: " + parsRes.error.message);
@@ -27,7 +27,7 @@ export const supabaseStore = {
     const mapped: Item[] = items.map((r: any) => ({
       id: r.id, name: r.name, category: r.category, unit: r.unit,
       isSpecial: r.is_special, isCup: r.is_cup, cupSize: r.cup_size ?? undefined,
-      hasRemainder: r.has_remainder, sort: r.sort,
+      hasRemainder: r.has_remainder, gramsPerUOM: Number(r.grams_per_uom ?? 0), sort: r.sort,
     }));
     const par: ParMap = {};
     for (const it of mapped) par[it.id] = { SND: null, NVP: null };
@@ -36,6 +36,15 @@ export const supabaseStore = {
       (par[p.item_id] as any)[p.branch_id] = p.level;
     }
     return { branches: BRANCHES, items: mapped, par };
+  },
+
+  async setItemConfig(itemId: string, cfg: { hasRemainder: boolean; gramsPerUOM: number }) {
+    const { error } = await sb()
+      .from("items")
+      .update({ has_remainder: cfg.hasRemainder, grams_per_uom: cfg.gramsPerUOM })
+      .eq("id", itemId);
+    if (error) throw error;
+    return { ok: true };
   },
 
   async getStock(branch: Branch, date: string): Promise<StockRow[]> {

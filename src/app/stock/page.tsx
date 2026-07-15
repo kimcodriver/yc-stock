@@ -1,6 +1,6 @@
 "use client";
 // M1: Stock Entry — กรอกสต็อกรายวัน/สาขา (glass, mobile-first)
-// hasRemainder items = UOM (แพ็ค) + Sale Unit (เศษ g). 1 แพ็ค = gramsPerUOM(unit) กรัม
+// hasRemainder items = UOM (แพ็ค) + Sale Unit (เศษ g). 1 แพ็ค = item.gramsPerUOM กรัม (ตั้งหน้า Settings)
 // เศษคงเหลือเกินเมื่อวานได้ (แกะกล่องใหม่) แต่ยอดรวม (แพ็ค×N + เศษ) วันนี้ ต้องไม่เกิน ของที่มี (ยกมา+รับเข้า)
 import React from "react";
 import type { Branch, Item, Meta, StockRow } from "@/lib/types";
@@ -20,14 +20,6 @@ const toNum = (raw: string): number => {
   return Number.isFinite(x) ? x : 0;
 };
 const blankZero = (v: number): number | string => (v === 0 ? "" : v);
-
-// 1 UOM (แพ็ค) = กี่กรัม — แปลงจากหน่วยบรรจุ เช่น "1kg/Box"→1000, "500g/Box"→500
-function gramsPerUOM(unit: string): number {
-  const m = unit.match(/(\d+(?:\.\d+)?)\s*(kg|g)\b/i);
-  if (!m) return 0;
-  const v = parseFloat(m[1]);
-  return /kg/i.test(m[2]) ? v * 1000 : v;
-}
 
 // ยอดรวมเป็นกรัม (UOM×N + เศษ) — ใช้เช็คว่าคงเหลือวันนี้ไม่เกินของที่มี
 function derive(r: StockRow, N: number) {
@@ -104,7 +96,7 @@ export default function StockPage() {
       if (!r) continue;
       if (isFilled(r)) filled++;
       const bad = it.hasRemainder
-        ? derive(r, gramsPerUOM(it.unit)).usedTotalG < 0
+        ? derive(r, it.gramsPerUOM).usedTotalG < 0
         : varianceOf(r) !== 0;
       if (bad) error++;
     }
@@ -216,7 +208,7 @@ export default function StockPage() {
               {g.items.map((it) => {
                 const row = rows[it.id];
                 if (!row) return null;
-                const N = gramsPerUOM(it.unit);
+                const N = it.gramsPerUOM;
                 const d = derive(row, N);
                 const filled = isFilled(row);
                 const v = varianceOf(row);

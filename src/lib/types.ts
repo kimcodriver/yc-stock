@@ -14,8 +14,15 @@ export interface Item {
   isSpecial: boolean;   // 7 รายการ special (รอบเข้าของแยกวัน/สาขา)
   isCup: boolean;       // ถ้วยเสิร์ฟ (reconcile)
   cupSize?: CupSize;
-  hasRemainder: boolean; // กรอกได้ทั้งเต็ม(แพ็ค) + เศษ(กรัม)
+  hasRemainder: boolean; // ขายแบบแกะ (นับเศษ g) · false = ขายเต็มแพ็ค/กล่อง
+  gramsPerUOM: number;   // กรัมต่อ 1 แพ็ค (ใช้เมื่อ hasRemainder) · 0 = ไม่ใช้
   sort: number;
+}
+
+// config ที่ตั้งได้ต่อ item (หน้า Settings)
+export interface ItemConfig {
+  hasRemainder: boolean;
+  gramsPerUOM: number;
 }
 
 export interface ParMap {

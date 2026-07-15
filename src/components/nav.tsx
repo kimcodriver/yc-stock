@@ -19,6 +19,8 @@ export function TopBar() {
           <div className="text-[15px] font-semibold">Yogurt Culture</div>
           <div className="text-[11px] text-brand-ink/50">ระบบจัดการสต็อก</div>
         </div>
+        <Link href="/settings" aria-label="ตั้งค่า"
+          className="ml-auto grid h-9 w-9 place-items-center rounded-xl border border-white/60 bg-white/50 text-lg">⚙️</Link>
       </div>
     </header>
   );

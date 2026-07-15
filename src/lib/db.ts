@@ -10,6 +10,9 @@ export const db = {
   getMeta: (): Promise<Meta> =>
     useSupabase ? supabaseStore.getMeta() : Promise.resolve(memoryStore.getMeta()),
 
+  setItemConfig: (itemId: string, cfg: { hasRemainder: boolean; gramsPerUOM: number }) =>
+    useSupabase ? supabaseStore.setItemConfig(itemId, cfg) : Promise.resolve(memoryStore.setItemConfig(itemId, cfg)),
+
   getStock: (branch: Branch, date: string): Promise<StockRow[]> =>
     useSupabase ? supabaseStore.getStock(branch, date) : Promise.resolve(memoryStore.getStock(branch, date)),
 
