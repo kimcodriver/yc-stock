@@ -3,77 +3,186 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-type Me = { id: string; name: string; role: "user" | "admin"; branchScope: string };
+export type Me = { id: string; name: string; role: "user" | "admin"; branchScope: "all" | "SND" | "NVP" };
 
-const USER_TABS = [
+type Tab = { href: string; label: string; icon: string };
+
+const USER_TABS: Tab[] = [
   { href: "/stock", label: "สต็อก", icon: "📝" },
   { href: "/sales", label: "ยอดขาย", icon: "💰" },
 ];
-const ADMIN_TABS = [
+const ADMIN_TABS: Tab[] = [
   { href: "/", label: "หน้าหลัก", icon: "🏠" },
   { href: "/stock", label: "สต็อก", icon: "📝" },
   { href: "/restock", label: "ต้องเติม", icon: "📦" },
   { href: "/sales", label: "ยอดขาย", icon: "💰" },
   { href: "/cups", label: "ถ้วย", icon: "🥤" },
 ];
-const ADMIN_MENU = [
-  { href: "/settings", label: "⚙️ ตั้งค่าสินค้า" },
-  { href: "/users", label: "👥 ผู้ใช้" },
-  { href: "/audit", label: "📜 Audit Log" },
+const ADMIN_MENU: Tab[] = [
+  { href: "/settings", label: "ตั้งค่าสินค้า", icon: "⚙️" },
+  { href: "/users", label: "ผู้ใช้", icon: "👥" },
+  { href: "/audit", label: "Audit Log", icon: "📜" },
 ];
 
-// context เล็ก ๆ ให้ TopBar+BottomNav แชร์ me (โหลดครั้งเดียว)
+// context ให้ทุกส่วน (nav + หน้า) แชร์ me (โหลดครั้งเดียว)
 const MeCtx = React.createContext<Me | null>(null);
+/** อ่านข้อมูลผู้ใช้ที่ล็อกอิน (null = ยังไม่โหลด/ไม่ได้ล็อกอิน) — ใช้ในหน้าเพื่อจำกัดสาขา */
+export function useMe(): Me | null {
+  return React.useContext(MeCtx);
+}
+
+const scopeLabel = (me: Me | null): string =>
+  !me ? "ระบบจัดการสต็อก"
+    : me.role === "admin" && me.branchScope === "all" ? "ผู้ดูแลระบบ · ทุกสาขา"
+    : me.branchScope !== "all" ? `${me.role === "admin" ? "แอดมิน" : "พนักงาน"} · สาขา ${me.branchScope}`
+    : "พนักงาน · ทุกสาขา";
+
+function useLogout() {
+  const router = useRouter();
+  return React.useCallback(async () => {
+    await fetch("/api/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }, [router]);
+}
 
 export function NavShell({ children }: { children: React.ReactNode }) {
   const [me, setMe] = React.useState<Me | null>(null);
   const path = usePathname();
   React.useEffect(() => {
-    fetch("/api/me").then((r) => (r.ok ? r.json() : { user: null })).then((d) => setMe(d.user)).catch(() => setMe(null));
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : { user: null }))
+      .then((d) => setMe(d.user))
+      .catch(() => setMe(null));
   }, [path]);
-  const hide = path === "/login";
+
+  if (path === "/login") return <>{children}</>;
+
   return (
     <MeCtx.Provider value={me}>
-      <div className="flex min-h-[100dvh] flex-col">
-        {!hide && <TopBar />}
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-4 pb-6">{children}</main>
-        {!hide && <BottomNav />}
-      </div>
+      <Sidebar />
+      <TopBar />
+      <main className="lg:pl-64">
+        <div className="mx-auto w-full max-w-3xl px-4 py-5 pb-28 lg:max-w-4xl lg:px-8 lg:py-8 lg:pb-12">
+          {children}
+        </div>
+      </main>
+      <BottomNav />
     </MeCtx.Provider>
   );
 }
 
+/* ── โลโก้ + ชื่อผู้ใช้ (ใช้ร่วม sidebar / topbar) ── */
+function Brand({ me, compact }: { me: Me | null; compact?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className={`grid ${compact ? "h-9 w-9 rounded-xl text-sm" : "h-11 w-11 rounded-2xl text-base"} place-items-center bg-gradient-to-br from-brand-red to-brand-orange font-bold text-white shadow-glass`}>
+        YC
+      </div>
+      <div className="leading-tight">
+        <div className={compact ? "text-[15px] font-semibold" : "text-base font-semibold"}>Yogurt Culture</div>
+        <div className="text-[11px] text-brand-ink/50">{scopeLabel(me)}</div>
+      </div>
+    </div>
+  );
+}
+
+function NavItem({ tab, active, onClick }: { tab: Tab; active: boolean; onClick?: () => void }) {
+  return (
+    <Link
+      href={tab.href}
+      onClick={onClick}
+      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+        active
+          ? "bg-brand-ink text-white shadow-glass"
+          : "text-brand-ink/70 hover:bg-white/70 hover:text-brand-ink"
+      }`}
+    >
+      <span className="text-lg leading-none">{tab.icon}</span>
+      <span>{tab.label}</span>
+    </Link>
+  );
+}
+
+/* ── Desktop: sidebar แนวตั้ง (≥lg) ── */
+function Sidebar() {
+  const me = React.useContext(MeCtx);
+  const path = usePathname();
+  const logout = useLogout();
+  const tabs = me?.role === "admin" ? ADMIN_TABS : USER_TABS;
+  const isOn = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-white/60 bg-white/55 px-4 py-5 backdrop-blur-xl lg:flex">
+      <Brand me={me} />
+
+      <nav className="mt-7 flex flex-col gap-1">
+        <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-brand-ink/35">เมนู</div>
+        {tabs.map((t) => (
+          <NavItem key={t.href} tab={t} active={isOn(t.href)} />
+        ))}
+      </nav>
+
+      {me?.role === "admin" && (
+        <nav className="mt-5 flex flex-col gap-1">
+          <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-brand-ink/35">จัดการระบบ</div>
+          {ADMIN_MENU.map((t) => (
+            <NavItem key={t.href} tab={t} active={isOn(t.href)} />
+          ))}
+        </nav>
+      )}
+
+      <button
+        onClick={logout}
+        className="mt-auto flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-warn transition hover:bg-warn/10"
+      >
+        <span className="text-lg leading-none">↩︎</span>
+        <span>ออกจากระบบ</span>
+      </button>
+    </aside>
+  );
+}
+
+/* ── Mobile: top bar + เมนู ☰ (<lg) ── */
 function TopBar() {
   const me = React.useContext(MeCtx);
-  const router = useRouter();
+  const logout = useLogout();
   const [open, setOpen] = React.useState(false);
-  async function logout() {
-    await fetch("/api/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
-  }
   return (
-    <header className="sticky top-0 z-30 border-b border-white/50 bg-white/50 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-white/50 bg-white/55 backdrop-blur-xl lg:hidden">
       <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand-red to-brand-orange text-sm font-bold text-white">YC</div>
-        <div className="leading-tight">
-          <div className="text-[15px] font-semibold">Yogurt Culture</div>
-          <div className="text-[11px] text-brand-ink/50">
-            {me ? `${me.name}${me.role === "admin" ? " · Admin" : me.branchScope !== "all" ? " · " + me.branchScope : ""}` : "ระบบจัดการสต็อก"}
-          </div>
-        </div>
+        <Brand me={me} compact />
         <div className="relative ml-auto">
-          <button onClick={() => setOpen((o) => !o)} aria-label="เมนู"
-            className="grid h-9 w-9 place-items-center rounded-xl border border-white/60 bg-white/50 text-lg">☰</button>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            aria-label="เมนู"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-white/60 bg-white/60 text-lg"
+          >
+            ☰
+          </button>
           {open && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-              <div className="absolute right-0 z-40 mt-2 w-48 overflow-hidden rounded-xl border border-black/5 bg-white shadow-glass">
-                {me?.role === "admin" && ADMIN_MENU.map((m) => (
-                  <Link key={m.href} href={m.href} onClick={() => setOpen(false)}
-                    className="block px-4 py-2.5 text-sm hover:bg-brand-cream">{m.label}</Link>
-                ))}
-                <button onClick={logout} className="block w-full border-t border-black/5 px-4 py-2.5 text-left text-sm text-warn hover:bg-warn/10">ออกจากระบบ</button>
+              <div className="absolute right-0 z-40 mt-2 w-52 overflow-hidden rounded-2xl border border-white/60 bg-white/95 shadow-glass backdrop-blur-xl">
+                {me?.role === "admin" &&
+                  ADMIN_MENU.map((m) => (
+                    <Link
+                      key={m.href}
+                      href={m.href}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-3 text-sm hover:bg-brand-cream"
+                    >
+                      <span>{m.icon}</span>
+                      <span>{m.label}</span>
+                    </Link>
+                  ))}
+                <button
+                  onClick={logout}
+                  className="flex w-full items-center gap-2.5 border-t border-black/5 px-4 py-3 text-left text-sm text-warn hover:bg-warn/10"
+                >
+                  <span>↩︎</span>
+                  <span>ออกจากระบบ</span>
+                </button>
               </div>
             </>
           )}
@@ -83,18 +192,24 @@ function TopBar() {
   );
 }
 
+/* ── Mobile: bottom tab nav (<lg) ── */
 function BottomNav() {
   const me = React.useContext(MeCtx);
   const path = usePathname();
   const tabs = me?.role === "admin" ? ADMIN_TABS : USER_TABS;
   return (
-    <nav className="sticky bottom-0 z-30 border-t border-white/50 bg-white/70 backdrop-blur-xl">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-white/50 bg-white/75 backdrop-blur-xl lg:hidden">
       <div className="mx-auto flex max-w-3xl">
         {tabs.map((t) => {
           const on = t.href === "/" ? path === "/" : path.startsWith(t.href);
           return (
-            <Link key={t.href} href={t.href}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition ${on ? "text-brand-red" : "text-brand-ink/55"}`}>
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] transition ${
+                on ? "text-brand-red" : "text-brand-ink/55"
+              }`}
+            >
               <span className="text-lg leading-none">{t.icon}</span>
               <span className={on ? "font-semibold" : ""}>{t.label}</span>
             </Link>

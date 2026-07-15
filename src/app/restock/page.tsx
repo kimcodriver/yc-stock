@@ -1,22 +1,25 @@
 "use client";
 // M2 · Restock (ต้องเติม) — รอบเติมของแยกวัน/สาขา (P0-8, P0-10)
 import React from "react";
-import { GlassCard, Segmented, Badge, PageTitle } from "@/components/ui";
+import { GlassCard, Segmented, BranchPicker, Badge, PageTitle } from "@/components/ui";
+import { useMe } from "@/components/nav";
 import type { Branch, Weekday, RestockRow } from "@/lib/types";
 
 const DAY_LABEL: Record<Weekday, string> = { wed: "วันพุธ", sat: "วันเสาร์" };
-const BRANCH_OPTS = [
-  { value: "SND" as Branch, label: "SND" },
-  { value: "NVP" as Branch, label: "NVP" },
-];
 const DAY_OPTS = [
   { value: "wed" as Weekday, label: "วันพุธ" },
   { value: "sat" as Weekday, label: "วันเสาร์" },
 ];
 
 export default function RestockPage() {
+  const me = useMe();
+  const scoped = !!me && me.branchScope !== "all";
   const [branch, setBranch] = React.useState<Branch>("NVP");
   const [day, setDay] = React.useState<Weekday>("wed");
+
+  React.useEffect(() => {
+    if (scoped) setBranch(me!.branchScope as Branch);
+  }, [scoped, me]);
   const [rows, setRows] = React.useState<RestockRow[]>([]);
   const [specialActive, setSpecialActive] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
@@ -57,7 +60,7 @@ export default function RestockPage() {
       <PageTitle title="เติมของ (ต้องเติม)" />
 
       <div className="mb-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <Segmented options={BRANCH_OPTS} value={branch} onChange={setBranch} />
+        <BranchPicker value={branch} onChange={setBranch} locked={scoped} />
         <Segmented options={DAY_OPTS} value={day} onChange={setDay} />
       </div>
 

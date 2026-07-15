@@ -2,12 +2,8 @@
 import React from "react";
 import type { Branch, SalesRow } from "@/lib/types";
 import { baht, todayISO } from "@/lib/fmt";
-import { GlassCard, Segmented, NumberField, Stat, Button, SaveBar, PageTitle, Badge } from "@/components/ui";
-
-const BRANCH_OPTS: { value: Branch; label: string }[] = [
-  { value: "SND", label: "SND" },
-  { value: "NVP", label: "NVP" },
-];
+import { GlassCard, BranchPicker, NumberField, Stat, Button, SaveBar, PageTitle, Badge } from "@/components/ui";
+import { useMe } from "@/components/nav";
 
 // เก็บ input เป็น string เพื่อให้ลบ/พิมพ์ได้ลื่น แล้วค่อยแปลงเป็นเลขตอนคำนวณ
 type Field = keyof SalesRow;
@@ -27,8 +23,14 @@ const fromRow = (row: SalesRow): Form => ({
 });
 
 export default function SalesPage() {
+  const me = useMe();
+  const scoped = !!me && me.branchScope !== "all";
   const [branch, setBranch] = React.useState<Branch>("NVP");
   const [date, setDate] = React.useState<string>(todayISO());
+
+  React.useEffect(() => {
+    if (scoped) setBranch(me!.branchScope as Branch);
+  }, [scoped, me]);
   const [form, setForm] = React.useState<Form>(EMPTY);
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -98,7 +100,7 @@ export default function SalesPage() {
       {/* สาขา + วันที่ */}
       <GlassCard className="mb-3">
         <div className="flex flex-col gap-3">
-          <Segmented options={BRANCH_OPTS} value={branch} onChange={setBranch} />
+          <BranchPicker value={branch} onChange={setBranch} locked={scoped} />
           <label className="flex flex-col gap-1">
             <span className="text-[11px] text-brand-ink/50">วันที่</span>
             <input

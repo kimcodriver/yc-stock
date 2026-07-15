@@ -42,6 +42,23 @@ export function Segmented<T extends string>({ options, value, onChange }: {
   );
 }
 
+// เลือกสาขา — ถ้า locked (user มีสิทธิ์สาขาเดียว) แสดงชิปล็อกแทนปุ่มสลับ
+export function BranchPicker<T extends string>({ value, onChange, locked }: {
+  options?: { value: T; label: string }[]; value: T; onChange: (v: T) => void; locked?: boolean;
+}) {
+  const opts = [{ value: "SND" as T, label: "สาขา SND" }, { value: "NVP" as T, label: "สาขา NVP" }];
+  if (locked) {
+    return (
+      <div className="flex items-center gap-2.5 rounded-xl border border-black/5 bg-white/70 px-3 py-2">
+        <span className="grid h-7 w-7 place-items-center rounded-lg bg-brand-ink text-[11px] font-bold text-white">{value}</span>
+        <span className="text-sm font-medium">สาขา {value}</span>
+        <span className="ml-auto text-[11px] text-brand-ink/40">🔒 สิทธิ์สาขานี้</span>
+      </div>
+    );
+  }
+  return <Segmented options={opts} value={value} onChange={onChange} />;
+}
+
 export function Accordion({ title, count, defaultOpen = false, children }: {
   title: string; count?: string; defaultOpen?: boolean; children: React.ReactNode;
 }) {

@@ -7,13 +7,9 @@ import type { Branch, Item, Meta, StockRow } from "@/lib/types";
 import { remainPieces, variance } from "@/lib/calc";
 import { todayISO, thaiDate } from "@/lib/fmt";
 import {
-  GlassCard, Badge, Button, Segmented, Accordion, NumberField, Stat, SaveBar, PageTitle,
+  GlassCard, Badge, Button, BranchPicker, Accordion, NumberField, Stat, SaveBar, PageTitle,
 } from "@/components/ui";
-
-const BRANCH_OPTS: { value: Branch; label: string }[] = [
-  { value: "SND", label: "สาขา SND" },
-  { value: "NVP", label: "สาขา NVP" },
-];
+import { useMe } from "@/components/nav";
 
 const toNum = (raw: string): number => {
   const x = parseFloat(raw);
@@ -36,8 +32,15 @@ const isFilled = (r: StockRow): boolean =>
   r.inPack > 0 || r.inG > 0 || r.remainPack !== r.carryPack || r.remainG !== r.carryG;
 
 export default function StockPage() {
+  const me = useMe();
+  const scoped = !!me && me.branchScope !== "all";
   const [branch, setBranch] = React.useState<Branch>("NVP");
   const [date, setDate] = React.useState<string>(todayISO());
+
+  // ผู้ใช้ที่มีสิทธิ์สาขาเดียว → ล็อกสาขาให้ตรงสิทธิ์
+  React.useEffect(() => {
+    if (scoped) setBranch(me!.branchScope as Branch);
+  }, [scoped, me]);
   const [meta, setMeta] = React.useState<Meta | null>(null);
   const [rows, setRows] = React.useState<Record<string, StockRow>>({});
   const [loading, setLoading] = React.useState(true);
@@ -227,7 +230,7 @@ export default function StockPage() {
 
       <GlassCard className="mb-3">
         <div className="grid gap-3">
-          <Segmented options={BRANCH_OPTS} value={branch} onChange={setBranch} />
+          <BranchPicker value={branch} onChange={setBranch} locked={scoped} />
           <label className="flex flex-col gap-1">
             <span className="text-[11px] text-brand-ink/50">วันที่</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="field" />

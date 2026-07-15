@@ -5,13 +5,9 @@ import type { Branch, CupRow, CupSize } from "@/lib/types";
 import { cupReconcile } from "@/lib/calc";
 import { todayISO, thaiDate } from "@/lib/fmt";
 import {
-  PageTitle, GlassCard, Segmented, NumberField, Stat, Badge, Button, SaveBar,
+  PageTitle, GlassCard, BranchPicker, NumberField, Stat, Badge, Button, SaveBar,
 } from "@/components/ui";
-
-const BRANCH_OPTS: { value: Branch; label: string }[] = [
-  { value: "SND", label: "สาขา SND" },
-  { value: "NVP", label: "สาขา NVP" },
-];
+import { useMe } from "@/components/nav";
 
 const SIZE_LABEL: Record<CupSize, string> = {
   P: "Cup P (5oz)",
@@ -25,8 +21,14 @@ const emptyRows = (): CupRow[] =>
   SIZES.map((size) => ({ size, start: 0, in: 0, remain: 0, sold: 0 }));
 
 export default function CupsPage() {
+  const me = useMe();
+  const scoped = !!me && me.branchScope !== "all";
   const [branch, setBranch] = React.useState<Branch>("NVP");
   const [date, setDate] = React.useState<string>(todayISO());
+
+  React.useEffect(() => {
+    if (scoped) setBranch(me!.branchScope as Branch);
+  }, [scoped, me]);
   const [rows, setRows] = React.useState<CupRow[]>(emptyRows());
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -96,7 +98,7 @@ export default function CupsPage() {
       {/* เลือกสาขา + วันที่ */}
       <GlassCard className="mb-3">
         <div className="flex flex-col gap-3">
-          <Segmented options={BRANCH_OPTS} value={branch} onChange={setBranch} />
+          <BranchPicker value={branch} onChange={setBranch} locked={scoped} />
           <label className="flex flex-col gap-1">
             <span className="text-[11px] text-brand-ink/50">วันที่</span>
             <input
